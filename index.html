@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INPULSE — 2026 Event Intelligence Dashboard (Live)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0e17;--s:#111827;--s2:#1a2235;--s3:#222d42;--acc:#00e59b;--acc-d:rgba(0,229,155,.12);--warn:#ff6b4a;--gold:#fbbf24;--gold-d:rgba(251,191,36,.12);--blue:#38bdf8;--blue-d:rgba(56,189,248,.12);--pink:#f472b6;--pink-d:rgba(244,114,182,.12);--txt:#f1f5f9;--dim:#94a3b8;--mut:#7d8ba0;--bdr:rgba(255,255,255,.08);--r:12px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+.amb{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;background:radial-gradient(600px 400px at 15% 20%,rgba(0,229,155,.04),transparent),radial-gradient(500px 500px at 85% 70%,rgba(56,189,248,.03),transparent)}
+.ctn{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:32px 24px 80px}
+.hdr{margin-bottom:40px;padding-bottom:32px;border-bottom:1px solid var(--bdr)}
+.tag{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--acc);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.tag::before{content:'';width:24px;height:1px;background:var(--acc)}
+h1{font-size:clamp(26px,4.5vw,40px);font-weight:700;line-height:1.15;letter-spacing:-.5px;margin-bottom:10px}
+h1 span{color:var(--acc)}
+.sub{font-size:15px;color:var(--dim);max-width:700px;line-height:1.6}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:36px}
+.sc{background:var(--s);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;text-align:center;transition:border-color .3s}
+.sc:hover{border-color:var(--acc)}
+.sc .n{font-family:'Space Mono',monospace;font-size:26px;font-weight:700;color:var(--acc)}
+.sc .lb{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.flt{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.fb{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:6px 14px;border-radius:100px;border:1px solid var(--bdr);background:transparent;color:var(--dim);cursor:pointer;transition:all .25s}
+.fb:hover{border-color:var(--acc);color:var(--txt)}
+.fb.act{background:var(--acc-d);border-color:var(--acc);color:var(--acc)}
+.fb.vert-fintech.act{background:var(--gold-d);border-color:var(--gold);color:var(--gold)}
+.fb.vert-streaming.act{background:var(--blue-d);border-color:var(--blue);color:var(--blue)}
+.fb.vert-beauty.act{background:var(--pink-d);border-color:var(--pink);color:var(--pink)}
+.st{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin:28px 0 14px;display:flex;align-items:center;gap:12px}
+.st::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.eg{display:flex;flex-direction:column;gap:10px;margin-bottom:40px}
+.ec{background:var(--s);border:1px solid var(--bdr);border-radius:var(--r);padding:20px;display:grid;grid-template-columns:1fr auto;gap:12px;cursor:pointer;transition:all .3s;position:relative;overflow:hidden}
+.ec::before{content:'';position:absolute;left:0;top:0;width:3px;height:100%;border-radius:3px 0 0 3px}
+.ec.h::before{background:var(--acc)}.ec.m::before{background:var(--gold)}.ec.l::before{background:var(--mut)}
+.ec:hover{border-color:rgba(255,255,255,.15);transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,0,0,.3)}
+.en{font-size:16px;font-weight:700;margin-bottom:4px;color:#fff}
+.em{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:#b0bec5;margin-bottom:6px}
+.em span{display:flex;align-items:center;gap:3px}
+.ed{font-size:13px;color:#a0aec0;line-height:1.55;display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)}
+.ec.open .ed{display:block}
+.sd{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:100px}
+.bdg{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:100px;font-weight:700;white-space:nowrap}
+.bdg-h{background:var(--acc-d);color:var(--acc)}.bdg-m{background:var(--gold-d);color:var(--gold)}.bdg-l{background:rgba(100,116,139,.2);color:#8899aa}
+.vt{font-size:10px;padding:2px 8px;border-radius:100px;border:1px solid var(--bdr);color:#8899aa;white-space:nowrap}
+.vt-fintech{border-color:rgba(251,191,36,.35);color:var(--gold)}
+.vt-streaming{border-color:rgba(56,189,248,.35);color:var(--blue)}
+.vt-beauty{border-color:rgba(244,114,182,.35);color:var(--pink)}
+.cnt{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);margin:4px 0 16px;text-align:right}
+.loading{text-align:center;padding:80px 20px}
+.loading .spinner{width:40px;height:40px;border:3px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{color:var(--dim);font-size:14px}
+.error-box{background:rgba(255,107,74,.08);border:1px solid rgba(255,107,74,.3);border-radius:var(--r);padding:20px;text-align:center;color:#ff8a6a}
+.refresh-note{font-size:11px;color:var(--mut);margin-top:6px;font-style:italic}
+@media(max-width:768px){.ec{grid-template-columns:1fr}.sd{flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="amb"></div>
+<div class="ctn">
+<div class="hdr">
+<div class="tag">INPULSE Agency — Event Intelligence 2026</div>
+<h1>GTM Soft Landing <span>Event Roadmap</span></h1>
+<p>Live dashboard pulling directly from your Google Sheet. Prioritized for likelihood of meeting marketing, growth, and strategy leaders from mid-market companies expanding into the US & Latin America.</p>
+<div class="refresh-note">🔄 Data syncs from Google Sheets on every page load</div>
+</div>
+
+<div class="stats" id="stats"><div class="loading"><div class="spinner"></div><p>Loading live data from Google Sheets…</p></div></div>
+
+<div id="controls" style="display:none">
+<div class="st">Filter by Vertical</div>
+<div class="flt" id="vertFilters">
+<button class="fb act" data-v="all">All Verticals</button>
+<button class="fb vert-fintech" data-v="fintech">Fintech</button>
+<button class="fb vert-streaming" data-v="streaming">Streaming / TV</button>
+<button class="fb vert-beauty" data-v="beauty">Beauty / Personal Care</button>
+<button class="fb" data-v="other">Other</button>
+</div>
+
+<div class="st">Filter by Priority</div>
+<div class="flt" id="prioFilters">
+<button class="fb act" data-p="all">All</button>
+<button class="fb" data-p="High">High</button>
+<button class="fb" data-p="Medium">Medium</button>
+<button class="fb" data-p="Low">Low</button>
+</div>
+</div>
+
+<div class="cnt" id="count"></div>
+<div class="eg" id="grid"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAyEpkb6xhFiVRnDIUi6Rj06gqoYhN3Mkib-gOgNfjR1OHj6TG0bM86DWmhMOM7wikoYVXaIXFXwGv/pub?gid=1967720882&single=true&output=csv';
+const MO = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function vert(industry) {
+  const i = (industry || '').toLowerCase();
+  if (/fintech|financial|crypto|insurance/.test(i)) return 'fintech';
+  if (/(streaming|television|broadcasting|media)/.test(i) && !/personal/.test(i)) return 'streaming';
+  if (/personal care|beauty|cosmetics/.test(i)) return 'beauty';
+  return 'other';
+}
+
+function loadData() {
+  return new Promise((resolve, reject) => {
+    Papa.parse(CSV_URL, {
+      download: true,
+      header: false,
+      skipEmptyLines: true,
+      complete: function(results) {
+        if (!results.data || results.data.length < 2) {
+          reject(new Error('No data rows found'));
+          return;
+        }
+        const rows = results.data;
+        const events = [];
+        // Skip header row (index 0)
+        for (let r = 1; r < rows.length; r++) {
+          const row = rows[r];
+          const name = (row[2] || '').trim();
+          if (!name) continue;
+          events.push({
+            m: (row[0] || '').trim(),
+            l: (row[1] || '').trim(),
+            n: name,
+            i: (row[3] || '').trim(),
+            t: (row[4] || '').trim(),
+            d: (row[5] || '').trim(),
+            w: (row[6] || '').trim(),
+            p: (row[7] || '').trim(),
+            a: (row[8] || '').trim(),
+            days: parseFloat(row[9]) || null,
+            _v: vert((row[3] || '').trim())
+          });
+        }
+        events.sort((a, b) => {
+          const ai = MO.indexOf(a.m), bi = MO.indexOf(b.m);
+          if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+          const po = { High: 0, Medium: 1, Low: 2 };
+          return (po[a.p] ?? 3) - (po[b.p] ?? 3);
+        });
+        resolve(events);
+      },
+      error: function(err) {
+        reject(new Error(err.message || 'Papa Parse failed to fetch CSV'));
+      }
+    });
+  });
+}
+
+let E = [], fv = 'all', fp = 'all';
+
+function renderStats() {
+  const st = document.getElementById('stats');
+  const hc = E.filter(e => e.p === 'High').length;
+  const mc = E.filter(e => e.p === 'Medium').length;
+  const fc = E.filter(e => e._v === 'fintech').length;
+  const sc = E.filter(e => e._v === 'streaming').length;
+  const bc = E.filter(e => e._v === 'beauty').length;
+  st.innerHTML = `
+    <div class="sc"><div class="n">${E.length}</div><div class="lb">Total Events</div></div>
+    <div class="sc"><div class="n">${hc}</div><div class="lb">High Priority</div></div>
+    <div class="sc"><div class="n">${mc}</div><div class="lb">Medium Priority</div></div>
+    <div class="sc"><div class="n">${fc}</div><div class="lb">Fintech</div></div>
+    <div class="sc"><div class="n">${sc}</div><div class="lb">Streaming/TV</div></div>
+    <div class="sc"><div class="n">${bc}</div><div class="lb">Beauty</div></div>`;
+}
+
+function render() {
+  const f = E.filter(e => {
+    if (fv !== 'all' && e._v !== fv) return false;
+    if (fp !== 'all' && e.p !== fp) return false;
+    return true;
+  });
+  const g = document.getElementById('grid');
+  const cn = document.getElementById('count');
+  cn.textContent = f.length + ' events';
+  g.innerHTML = '';
+  let curMonth = '';
+  f.forEach(e => {
+    if (e.m !== curMonth) {
+      curMonth = e.m;
+      const s = document.createElement('div');
+      s.className = 'st';
+      s.textContent = curMonth || 'TBD';
+      g.appendChild(s);
+    }
+    const c = document.createElement('div');
+    const pc = e.p === 'High' ? 'h' : e.p === 'Medium' ? 'm' : 'l';
+    c.className = 'ec ' + pc;
+    const bc2 = e.p === 'High' ? 'bdg-h' : e.p === 'Medium' ? 'bdg-m' : 'bdg-l';
+    const vc = 'vt-' + e._v;
+    const at = e.a === 'Yes' ? ' ✅' : '';
+    c.innerHTML = `
+      <div>
+        <div class="en">${e.n}${at}</div>
+        <div class="em">
+          <span>📅 ${e.m || 'TBD'}</span>
+          <span>📍 ${e.l}</span>
+          ${e.days ? '<span>⏱ ' + e.days + 'd</span>' : ''}
+          <span>🏷 ${e.t || ''}</span>
+        </div>
+        <div class="ed">${e.d}</div>
+      </div>
+      <div class="sd">
+        <span class="bdg ${bc2}">${e.p || 'TBD'}</span>
+        <span class="vt ${vc}">${e.i || ''}</span>
+      </div>`;
+    c.onclick = () => c.classList.toggle('open');
+    g.appendChild(c);
+  });
+}
+
+// Init
+loadData().then(events => {
+  E = events;
+  renderStats();
+  document.getElementById('controls').style.display = 'block';
+  render();
+
+  document.getElementById('vertFilters').onclick = e => {
+    if (!e.target.classList.contains('fb')) return;
+    document.querySelectorAll('#vertFilters .fb').forEach(b => b.classList.remove('act'));
+    e.target.classList.add('act');
+    fv = e.target.dataset.v;
+    render();
+  };
+  document.getElementById('prioFilters').onclick = e => {
+    if (!e.target.classList.contains('fb')) return;
+    document.querySelectorAll('#prioFilters .fb').forEach(b => b.classList.remove('act'));
+    e.target.classList.add('act');
+    fp = e.target.dataset.p;
+    render();
+  };
+}).catch(err => {
+  document.getElementById('stats').innerHTML = `<div class="error-box">
+    <p><strong>Could not load live data</strong></p>
+    <p style="margin-top:8px;font-size:13px">Error: ${err.message}</p>
+    <p style="margin-top:12px;font-size:12px;color:var(--dim)">Make sure the Google Sheet is published to web:<br>File → Share → Publish to Web → select the correct tab → CSV</p>
+  </div>`;
+});
+</script>
+</body>
+</html>
