@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>INPULSE — 2026 Event Intelligence Dashboard (Live)</title>
+<title>INPULSE — 2026 Event Intelligence Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
-:root{--bg:#0a0e17;--s:#111827;--s2:#1a2235;--s3:#222d42;--acc:#00e59b;--acc-d:rgba(0,229,155,.12);--warn:#ff6b4a;--gold:#fbbf24;--gold-d:rgba(251,191,36,.12);--blue:#38bdf8;--blue-d:rgba(56,189,248,.12);--pink:#f472b6;--pink-d:rgba(244,114,182,.12);--txt:#f1f5f9;--dim:#94a3b8;--mut:#7d8ba0;--bdr:rgba(255,255,255,.08);--r:12px}
+:root{--bg:#0a0e17;--s:#111827;--acc:#00e59b;--acc-d:rgba(0,229,155,.12);--gold:#fbbf24;--gold-d:rgba(251,191,36,.12);--blue:#38bdf8;--blue-d:rgba(56,189,248,.12);--pink:#f472b6;--pink-d:rgba(244,114,182,.12);--txt:#f1f5f9;--dim:#94a3b8;--mut:#7d8ba0;--bdr:rgba(255,255,255,.08);--r:12px}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
 .amb{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;background:radial-gradient(600px 400px at 15% 20%,rgba(0,229,155,.04),transparent),radial-gradient(500px 500px at 85% 70%,rgba(56,189,248,.03),transparent)}
@@ -16,7 +17,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--txt);min-
 .tag::before{content:'';width:24px;height:1px;background:var(--acc)}
 h1{font-size:clamp(26px,4.5vw,40px);font-weight:700;line-height:1.15;letter-spacing:-.5px;margin-bottom:10px}
 h1 span{color:var(--acc)}
-.sub{font-size:15px;color:var(--dim);max-width:700px;line-height:1.6}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:36px}
 .sc{background:var(--s);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;text-align:center;transition:border-color .3s}
 .sc:hover{border-color:var(--acc)}
@@ -53,8 +53,10 @@ h1 span{color:var(--acc)}
 .loading .spinner{width:40px;height:40px;border:3px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading p{color:var(--dim);font-size:14px}
-.error-box{background:rgba(255,107,74,.08);border:1px solid rgba(255,107,74,.3);border-radius:var(--r);padding:20px;text-align:center;color:#ff8a6a}
-.refresh-note{font-size:11px;color:var(--mut);margin-top:6px;font-style:italic}
+.src-note{font-size:11px;color:var(--mut);margin-top:8px;display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot-live{background:#00e59b;box-shadow:0 0 6px rgba(0,229,155,.5)}
+.dot-cache{background:var(--gold);box-shadow:0 0 6px rgba(251,191,36,.4)}
 @media(max-width:768px){.ec{grid-template-columns:1fr}.sd{flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap}.stats{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -64,11 +66,11 @@ h1 span{color:var(--acc)}
 <div class="hdr">
 <div class="tag">INPULSE Agency — Event Intelligence 2026</div>
 <h1>GTM Soft Landing <span>Event Roadmap</span></h1>
-<p>Live dashboard pulling directly from your Google Sheet. Prioritized for likelihood of meeting marketing, growth, and strategy leaders from mid-market companies expanding into the US & Latin America.</p>
-<div class="refresh-note">🔄 Data syncs from Google Sheets on every page load</div>
+<p style="color:var(--dim);max-width:700px;line-height:1.6">Prioritized for likelihood of meeting marketing, growth, and strategy leaders from mid-market companies expanding into the US & Latin America.</p>
+<div class="src-note" id="srcNote"><span class="dot"></span> Loading…</div>
 </div>
 
-<div class="stats" id="stats"><div class="loading"><div class="spinner"></div><p>Loading live data from Google Sheets…</p></div></div>
+<div class="stats" id="stats"><div class="loading"><div class="spinner"></div><p>Loading data…</p></div></div>
 
 <div id="controls" style="display:none">
 <div class="st">Filter by Vertical</div>
@@ -79,7 +81,6 @@ h1 span{color:var(--acc)}
 <button class="fb vert-beauty" data-v="beauty">Beauty / Personal Care</button>
 <button class="fb" data-v="other">Other</button>
 </div>
-
 <div class="st">Filter by Priority</div>
 <div class="flt" id="prioFilters">
 <button class="fb act" data-p="all">All</button>
@@ -88,81 +89,107 @@ h1 span{color:var(--acc)}
 <button class="fb" data-p="Low">Low</button>
 </div>
 </div>
-
 <div class="cnt" id="count"></div>
 <div class="eg" id="grid"></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script>
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTAyEpkb6xhFiVRnDIUi6Rj06gqoYhN3Mkib-gOgNfjR1OHj6TG0bM86DWmhMOM7wikoYVXaIXFXwGv/pub?gid=1967720882&single=true&output=csv';
-const MO = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vTAyEpkb6xhFiVRnDIUi6Rj06gqoYhN3Mkib-gOgNfjR1OHj6TG0bM86DWmhMOM7wikoYVXaIXFXwGv/pub?gid=1967720882&single=true&output=csv';
+const MO=["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-function vert(industry) {
-  const i = (industry || '').toLowerCase();
-  if (/fintech|financial|crypto|insurance/.test(i)) return 'fintech';
-  if (/(streaming|television|broadcasting|media)/.test(i) && !/personal/.test(i)) return 'streaming';
-  if (/personal care|beauty|cosmetics/.test(i)) return 'beauty';
-  return 'other';
+// Embedded fallback (last known snapshot — used when live fetch fails)
+const FALLBACK=[{"m":"January","l":"Miami","n":"Cosmoprof North America Miami","i":"Beauty","t":"Trade Show","d":"Trade show B2B que conecta toda la cadena de suministro y producto terminado.","w":"https://www.cosmoprofna.com/","p":"High","a":"Yes","days":3,"cost":null},{"m":"January","l":"Uruguay","n":"Punta Tech Meetup","i":"Technology","t":"Meetup","d":"Networking, inspiración y comunidad.","w":"http://www.puntameetup.com/ ","p":"Low","a":"No","days":3,"cost":2600},{"m":"February","l":"Mexico","n":"FinTech Mexico Festival","i":"Fintech","t":"Festival","d":"Reúne a más de 2,500 profesionales del sector financiero y tecnológico.","w":"https://www.fintechmexicofestival.com/","p":"High","a":"Yes","days":2,"cost":890},{"m":"March","l":"Miami","n":"Adobe Summit (Global)","i":"Marketing","t":"Conference","d":"Principal conferencia de Customer Experience Management. Contacto con CMOs.","w":"https://summit.adobe.com/na/","p":"Low","a":"TBD","days":3,"cost":400},{"m":"March","l":"Miami","n":"InSureTech Americas","i":"Insurance","t":"Conference","d":"Enfocado en la transformación digital de la industria de seguros. Acceso directo a C-Levels de aseguradoras en la región.","w":"https://www.insuretechconnect.com/events/insuretech-americas","p":"High","a":"TBD","days":2,"cost":2000},{"m":"March","l":"Argentina","n":"Insurance Week 2026","i":"Insurance","t":"Conference","d":"s. Reunirá a líderes globales (como Munich Re y Swiss Re) para debatir sobre tecnología aplicada a seguros, riesgos y normativa.","w":"https://www.insuranceweek.ar/en/","p":"Low","a":"TBD","days":3,"cost":1000},{"m":"April","l":"Miami","n":"Token Americas 2026","i":"Financial Services","t":"Summit","d":"Leaders from banks, fintechs, PSPs, telecoms, wallets, and digital asset platforms for a one-day, high-impact Summit on stablecoins, digital USD infrastructure, and cross-border payments across the Americas.","w":"https://www.tokenamericas.com/","p":"High","a":"TBD","days":1,"cost":200},{"m":"April","l":"Miami","n":"UNSIN Music Conference & Festival","i":"Music","t":"Conference","d":"Conferencia de alto networking de la música latina. Clave para sellos, publishers y plataformas de streaming.","w":"https://www.unsin.live/","p":"Medium","a":"Yes","days":2,"cost":250},{"m":"April","l":"Mexico","n":"Talent Land","i":"Technology","t":"Festival","d":"Evento masivo de talento con un área dedicada a negocios e inversión (Business Land).","w":"https://www.talent-land.tv/","p":"Medium","a":"TBD","days":4,"cost":1350},{"m":"April","l":"Miami","n":"eMerge Americas","i":"Technology","t":"Conference","d":"Conexión vital entre líderes tecnológicos de Latam y el ecosistema de Miami.","w":"https://emergeamericas.com/","p":"Medium","a":"Yes","days":2,"cost":0},{"m":"April","l":"Miami","n":"Endeavor Summit Miami","i":"Entrepreneurship","t":"Summit","d":"","w":"https://summit24.endeavormiami.org/","p":"Medium","a":"TBD","days":1,"cost":0},{"m":"April","l":"Colombia","n":"WebCongress (Regional)","i":"Marketing","t":"Conference","d":"Conferencia de tendencias en marketing digital, IA y negocios.","w":"https://webcongress.com/","p":"Low","a":"TBD","days":2,"cost":1340},{"m":"April","l":"Argentina","n":"Interactive Advertising Bureau (IAB) Forum","i":"Advertising","t":"Forum","d":"El encuentro más importante de la publicidad digital en Argentina.","w":"https://www.iabargentina.com.ar/","p":"Low","a":"TBD","days":1,"cost":120},{"m":"April","l":"Argentina","n":"Expo EFI (Congreso Económico Argentino)","i":"Fintech","t":"Congress","d":"Es el evento de economía y finanzas más grande del país. Incluye workshops específicos sobre tecnología financiera, mercado de capitales y billeteras virtuales.","w":"https://expoefi.com/","p":"High","a":"TBD","days":2,"cost":250},{"m":"","l":"Chile","n":"eCommerce Day Chile","i":"Fintech","t":"Conference","d":"El punto de encuentro más importante para el retail y el ecosistema digital chileno. Se entregan los eCommerce Awards y hay workshops sobre IA aplicada a ventas y medios de pago.","w":"https://ecommerceday.cl/2026/","p":"Medium","a":"TBD","days":1,"cost":150},{"m":"May","l":"Colombia","n":"Colombia 4.0","i":"Technology","t":"Conference","d":"El evento más grande del sector digital en Colombia.","w":"https://col40.mintic.gov.co/","p":"Low","a":"TBD","days":3,"cost":1370},{"m":"May","l":"Miami","n":"Consensus","i":"Crypto / Blockchain","t":"Conference","d":"","w":"","p":"Medium","a":"TBD","days":3,"cost":1200},{"m":"May","l":"Uruguay","n":"Montevideo COMM","i":"Telecommunications","t":"Conference","d":"Cita obligada para líderes de la industria de TV por Cable y Telecomunicaciones.","w":"http://www.montevideocomm.com.uy/","p":"Low","a":"TBD","days":2,"cost":1600},{"m":"May","l":"Mexico","n":"Congreso Nacional de Mercadotecnia (Merca2.0)","i":"Marketing","t":"Congress","d":"Gran congreso de marketing en Mexico.","w":"https://congreso.merca20.com/","p":"Low","a":"TBD","days":2,"cost":1140},{"m":"May","l":"Mexico","n":"EBIO (Expo Belleza Internacional Occidente)","i":"Beauty","t":"Trade Show","d":"Evento profesional de belleza con foco en la distribución y estética.","w":"https://ebio.com.mx/","p":"Low","a":"TBD","days":2,"cost":940},{"m":"May","l":"Mexico","n":"Open Finance 2050","i":"Fintech","t":"Summit","d":"","w":"http://openfinance2050.com","p":"High","a":"","days":null,"cost":530},{"m":"June","l":"Colombia","n":"BIME Bogotá","i":"Music","t":"Conference","d":"Punto de encuentro profesional clave para el sector musical en Latam.","w":"https://bime.org/es/bogota/","p":"Low","a":"TBD","days":4,"cost":1730},{"m":"June","l":"Mexico","n":"Congreso America Digital Mexico","i":"Technology","t":"Congress","d":"Congreso IA, tecnología y negocios.","w":"https://mx.america-digital.com/","p":"Low","a":"TBD","days":2,"cost":1340},{"m":"June","l":"Chile","n":"Latam Retail Congress","i":"Retail","t":"Congress","d":"Evento sobre tendencias en la experiencia del cliente y tecnología en el retail.","w":"https://latamretailcongress.com/","p":"Low","a":"TBD","days":2,"cost":400},{"m":"June","l":"Miami","n":"Gartner Marketing Symposium/Xpo","i":"Marketing","t":"Conference","d":"Dirigido a CMOs y líderes de marketing para discutir estrategia y tecnología.","w":"https://www.gartner.com/en/conferences/na/marketing-symposium-xpo","p":"Low","a":"TBD","days":3,"cost":0},{"m":"June","l":"Colombia","n":"Expo Belleza (Medellín)","i":"Beauty","t":"Trade Show","d":"Feria comercial que promueve oportunidades de negocio B2B para productos de belleza.","w":"https://www.expobelleza.com.co/","p":"Low","a":"TBD","days":3,"cost":1370},{"m":"July","l":"Nueva York","n":"Latin Alternative Music Conference (LAMC)","i":"Music","t":"Conference","d":"Networking de alto valor con ejecutivos de disqueras, plataformas de streaming y publishers enfocados en Latam.","w":"https://www.latinalternative.com/","p":"Low","a":"TBD","days":4,"cost":null},{"m":"July","l":"Miami","n":"https://www.sipiapa.org/sipconnect","i":"Media","t":"Conference","d":"Traditional Press","w":"https://www.sipiapa.org/sipconnect","p":"Low","a":"TBD","days":2,"cost":350},{"m":"August","l":"Colombia","n":"Feria de Belleza y Salud (Bogotá)","i":"Beauty","t":"Trade Show","d":"Principal trade show del sector en la región Andina.","w":"https://feriadelabelleza.com/","p":"Low","a":"TBD","days":5,"cost":1780},{"m":"August","l":"Argentina","n":"Digital Summit Argentina","i":"Marketing","t":"Summit","d":"Conferencia enfocada en las estrategias digitales más recientes.","w":"https://www.digitalsummit.la/","p":"Low","a":"TBD","days":1,"cost":100},{"m":"August","l":"Mexico","n":"FIntech Summit Americas","i":"Fintech","t":"Summit","d":"Centro Asturiano de Mexico","w":"https://fintechsummitamericas.com/language/es/","p":"High","a":"Yes","days":2,"cost":1240},{"m":"September","l":"Miami","n":"UNITIC Miami","i":"Telecommunications","t":"Conference","d":"Conferencia anual de la industria de Telecomunicaciones en América Latina.","w":"https://www.unitic.tv/","p":"Low","a":"TBD","days":2,"cost":500},{"m":"September","l":"Miami","n":"Content Marketing World (Latam Focus)","i":"Marketing","t":"Conference","d":"Conferencia de primer nivel sobre estrategia de contenido y storytelling.","w":"https://www.contentmarketingworld.com/","p":"Low","a":"TBD","days":3,"cost":1500},{"m":"September","l":"Chile","n":"Congreso America Digital Chile","i":"Technology","t":"Congress","d":"Congreso IA, tecnología y negocios.","w":"https://congreso.america-digital.com/","p":"Low","a":"TBD","days":2,"cost":0},{"m":"October","l":"Colombia","n":"Andicom","i":"Technology","t":"Congress","d":"El congreso TIC más importante de Colombia y la región andina.","w":"https://andicom.org/","p":"Low","a":"TBD","days":3,"cost":1370},{"m":"October","l":"Mexico","n":"FINNOSUMMIT","i":"Fintech","t":"Summit","d":"Uno de los encuentros más influyentes de la industria Fintech en la región.","w":"https://www.finnosummit.com/","p":"High","a":"TBD","days":2,"cost":890},{"m":"October","l":"Mexico","n":"Expo Beauty Show (EBS) Mexico","i":"Beauty","t":"Trade Show","d":"Ofrece encuentros B2B 1:1 personalizados entre expositores, marcas y distribuidores.","w":"https://www.expobeautyshow.com/","p":"Medium","a":"TBD","days":3,"cost":1070},{"m":"October","l":"Argentina","n":"Argentina Fintech Forum","i":"Fintech","t":"Forum","d":"Evento principal de la Cámara Fintech Argentina.","w":"https://www.camarafintech.org.ar/","p":"High","a":"TBD","days":2,"cost":0},{"m":"November","l":"Mexico","n":"Mexico Tech Week","i":"Technology","t":"Conference","d":"Eventos Fintech.","w":"https://www.mexicotechweek.mx/","p":"Medium","a":"TBD","days":5,"cost":1430},{"m":"November","l":"Argentina","n":"Argentina Tech Week","i":"Technology","t":"Conference","d":"Eventos Fintech.","w":"https://www.tecweek.com.ar/","p":"Medium","a":"TBD","days":5,"cost":0},{"m":"November","l":"Argentina","n":"Social Media Day","i":"Marketing","t":"Conference","d":"Tendencias digitales de marketing.","w":"https://smday.com.ar/buenosaires/","p":"Low","a":"TBD","days":1,"cost":0},{"m":"November","l":"Chile","n":"Digital Summit Chile","i":"Marketing","t":"Summit","d":"Enfocado en la transformación digital, data y performance marketing en el ecosistema chileno.","w":"https://www.digitalsummit.la/","p":"Low","a":"TBD","days":1,"cost":0},{"m":"November","l":"Miami","n":"eMerge Founders Summit","i":"Entrepreneurship","t":"Summit","d":"Evento exclusivo centrado en fundadores e inversores de capital de riesgo.","w":"https://emergeamericas.com/","p":"Medium","a":"TBD","days":1,"cost":0},{"m":"February","l":"Online","n":"Streaming Media Connect 2026","i":"Streaming / Media","t":"Conference (Virtual)","d":"Free webinar series on live streaming, OTT, content delivery, monetization. Sessions on CTV advertising, audience growth, and streaming workflows. Speakers from Netflix, NBA, YouTube.","w":"https://www.streamingmedia.com/Conferences/Connect2026/","p":"Low","a":"TBD","days":3,"cost":0},{"m":"February","l":"London","n":"MIP London","i":"Television / Streaming","t":"Market","d":"MIP's London edition at The Savoy. Intimate format connecting TV/streaming execs for deal-making. Strong focus on European and international content distribution and co-production.","w":"https://www.mipcom.com","p":"Medium","a":"TBD","days":3,"cost":0},{"m":"April","l":"Las Vegas","n":"NAB Show + Streaming Summit","i":"Broadcasting / Streaming","t":"Trade Show + Summit","d":"World's largest broadcast convention (55K+ attendees). The Streaming Summit (Apr 20-21) within NAB features 85 speakers from Netflix, Disney, Paramount+, Roku, DAZN. Key topics: cord cutting, FAST, AVOD, subscriber growth.","w":"https://nabstreamingsummit.com/","p":"High","a":"TBD","days":5,"cost":0},{"m":"April","l":"New York","n":"TV Disrupt 2026","i":"Television / Advertising","t":"Summit","d":"iSpot's annual event (Apr 22). Top ad leaders discuss video ad measurement, cross-platform strategies, and streaming-first budgets. Attended by brands, agencies, networks, and streaming platforms.","w":"https://tvdisrupt2026.splashthat.com/","p":"Medium","a":"TBD","days":1,"cost":0},{"m":"June","l":"Denver","n":"StreamTV Show 2026","i":"Streaming / Television","t":"Conference + Trade Show","d":"The ultimate streaming TV gathering (Jun 16-19). Top executives, content directors, tech leaders & marketing visionaries. Tracks: monetization, subscriber growth, churn reduction, bundling, ad-supported streaming. Free passes available for qualifying buyers.","w":"https://www.streamtvshow.com/","p":"High","a":"TBD","days":4,"cost":0},{"m":"June","l":"Los Angeles","n":"Future of Video (TVOT)","i":"Streaming / OTT","t":"Conference","d":"Executive conference by Parks Associates & OTT.X. Focused on market trends, consumer research on streaming video, OTT, pay-TV, and connected home. Speakers from major streamers, FAST platforms, and ad-tech.","w":"https://www.parksassociates.com/event/future-of-video","p":"Medium","a":"TBD","days":2,"cost":0},{"m":"April","l":"New York","n":"Convergent TV World 2026","i":"Television / Streaming","t":"Conference","d":"475+ senior leaders from agencies, brands, publishers, networks, streaming cos, DSPs, SSPs, and measurement providers. Tracks: FAST, AVOD, retail media, cross-screen strategy, measurement. Formerly CTV Connect.","w":"https://www.chiefmarketer.com/event/convergent-tv-2026/","p":"High","a":"TBD","days":2,"cost":0},{"m":"October","l":"New York","n":"NAB Show New York","i":"Broadcasting / Streaming","t":"Trade Show","d":"East Coast edition of NAB (Oct 21-22, Javits Center). More intimate format for deeper conversations with broadcast networks, production companies, and streaming platforms.","w":"https://www.nabshow.com/","p":"Medium","a":"TBD","days":2,"cost":0},{"m":"May","l":"London","n":"CTV, OTT & Streaming Summit","i":"Streaming / Advertising","t":"Summit","d":"200+ attendees, 70% C-level/Director/VP/Head of. Focused on CTV/OTT business: monetization, measurement, ad-supported streaming, data partnerships. Speakers from Channel 4, Samsung Ads, and major broadcasters. London, May 14.","w":"https://retailx.events/retail-mediax/ctv-ott-streaming-summit","p":"High","a":"TBD","days":1,"cost":0},{"m":"March","l":"London","n":"Connected TV World Summit 2026","i":"Television / Streaming","t":"Summit","d":"Established #1 thought-leadership event for the global TV and premium video market. C-level execs, product leaders, analysts. Focus: making TV a better product and business. Strategy + implementation detail.","w":"https://www.adwantedevents.com/ctvws26","p":"Medium","a":"TBD","days":2,"cost":0},{"m":"September","l":"Amsterdam","n":"IBC 2026","i":"Broadcasting / Media Tech","t":"Trade Show + Conference","d":"Europe's premier media & entertainment tech show (Sep 11-14). 43,000+ visitors from 170 countries, 1,300+ exhibitors, 600+ speakers. Covers content creation, distribution, OTT, streaming, monetization, AI. Essential European event.","w":"https://show.ibc.org/","p":"High","a":"TBD","days":4,"cost":0},{"m":"October","l":"Cannes","n":"MIPCOM Cannes 2026","i":"Television / Streaming","t":"Market + Conference","d":"World's largest global TV & streaming content market (Oct 12-15). 12,000+ delegates from 100+ countries. Studios, broadcasters, platforms, distributors. Innovation Lab covers FAST, CTV, AI. Heavy content focus but essential for reaching TV/streaming execs transitioning to DTC.","w":"https://www.mipcom.com","p":"Medium","a":"TBD","days":4,"cost":0},{"m":"October","l":"Buenos Aires","n":"Jornadas Internacionales ATVC/CAPPSA","i":"Television / Telecomunicaciones","t":"Conference","d":"The oldest and most important pay-TV and content industry event in Latin America (Oct 27-28). 36th edition. Focused on digital transformation, new business models, streaming transition, regulation. Leaders from TV operators, content producers, regulators across LatAm.","w":"https://atvc.org.ar/jornadas-internacionales/","p":"High","a":"TBD","days":2,"cost":0},{"m":"November","l":"Cancún","n":"MIP Cancún 2026","i":"Television / Streaming","t":"Market","d":"The #1 content & co-production market for LatAm and US Hispanic TV (Nov 17-20, Moon Palace). Pre-scheduled 1:1 meetings with broadcasters and OTT platforms: Amazon, Disney+, Paramount+, ViX, Globo, Roku. 120+ distributors, 200+ buyers from 47 countries.","w":"https://www.mipcancun.com/","p":"High","a":"TBD","days":4,"cost":null},{"m":"August","l":"São Paulo","n":"SET Expo 2026","i":"Broadcasting / Digital Media","t":"Trade Show + Conference","d":"Latin America's largest broadcast and new media event. Hosted by Brazilian Society of Television Engineering. 150+ exhibitors, 400+ brands. Key for understanding Brazil's DTV+ rollout and the region's biggest market transition from linear to digital.","w":"https://www.setexpo.com.br/","p":"Medium","a":"TBD","days":3,"cost":null},{"m":"March","l":"New York","n":"IBS New York 2026","i":"Personal Care / Cosmetics","t":"Trade Show","d":"Leading show for salon owners, stylists, and beauty professionals (Mar 8-10, Javits Center). Education, live demos, and access to professional brands. Strong international attendance.","w":"https://www.ibsnewyork.com/","p":"Medium","a":"TBD","days":3,"cost":null},{"m":"March","l":"Bologna","n":"Cosmoprof Worldwide Bologna 2026","i":"Personal Care / Cosmetics","t":"Trade Show","d":"THE world's #1 B2B beauty trade show (Mar 26-29). 3,000+ exhibitors from 64 countries, 250K+ visitors from 150 countries. Covers entire supply chain. 32 country pavilions. Key for international brands seeking US/LatAm expansion. Buyer delegations from North America, Middle East, and APAC.","w":"https://www.cosmoprof.com/","p":"High","a":"TBD","days":4,"cost":null},{"m":"March","l":"Miami","n":"PCPC Beauty Collective Summit","i":"Personal Care / Cosmetics","t":"Summit","d":"Brings together cosmetics industry leaders to discuss regulatory, safety, and science-driven topics (Mar 23, Ritz-Carlton Key Biscayne). Geared toward executives and policy-focused teams. Intimate format, high-level networking.","w":"https://www.personalcarecouncil.org/","p":"Medium","a":"TBD","days":1,"cost":null},{"m":"April","l":"Paris","n":"in-cosmetics Global 2026","i":"Personal Care / Ingredients","t":"Trade Show","d":"The world's leading event for cosmetic ingredients, formulation, and R&D (Apr 14-16, Paris Expo). Core event for product developers and suppliers across global beauty brands. International brands exploring new markets attend in force.","w":"https://www.in-cosmetics.com/global/","p":"Medium","a":"TBD","days":3,"cost":null},{"m":"April","l":"Chicago","n":"America's Beauty Show 2026","i":"Personal Care / Cosmetics","t":"Trade Show","d":"Major annual beauty trade show (Apr 18-20, Rosemont). 21K+ beauty pros. Salon- and stylist-focused with live stages and broad vendor presence. Good for professional channel distribution.","w":"https://www.americasbeautyshow.com/","p":"Low","a":"TBD","days":2,"cost":null},{"m":"June","l":"New York","n":"NYSCC Suppliers' Day","i":"Personal Care / Ingredients","t":"Trade Show","d":"Premier event for cosmetic ingredient suppliers and formulators (Jun 19-20, Javits Center). Where beauty brands source ingredients, packaging, and manufacturing partners. International suppliers looking to enter US market exhibit here.","w":"https://nyscc.org/suppliers-day/","p":"Medium","a":"TBD","days":2,"cost":null},{"m":"June","l":"New York","n":"Luxe Pack New York","i":"Personal Care / Packaging","t":"Trade Show","d":"Focus on creative packaging for luxury beauty, fragrance, and cosmetics (May 6-7, Javits Center). Where beauty brands meet packaging innovators. Key for brands building premium DTC positioning.","w":"https://www.luxepacknewyork.com/","p":"Medium","a":"TBD","days":2,"cost":null},{"m":"July","l":"Las Vegas","n":"Cosmoprof North America Las Vegas 2026","i":"Personal Care / Cosmetics","t":"Trade Show","d":"Leading B2B beauty event in the Americas (Jul 13-15, Mandalay Bay). Global brands, distributors, retailers, and suppliers. Where indie brands get discovered and land US retail deals. Strong international expansion focus.","w":"https://www.cosmoprofnorthamerica.com/","p":"High","a":"TBD","days":3,"cost":null},{"m":"August","l":"Fort Lauderdale","n":"IECSC Florida / Be+Well Show","i":"Personal Care / Spa & Wellness","t":"Trade Show + Conference","d":"International Esthetics, Cosmetics & Spa Conference (Aug 30-31). Hundreds of premier brands, professional-only pricing. 40+ hours of education. Key for brands targeting the professional spa/esthetics channel in the US.","w":"https://www.ibslasvegas.com/","p":"Low","a":"TBD","days":2,"cost":null},{"m":"March","l":"Düsseldorf","n":"Beauty Düsseldorf 2026","i":"Personal Care / Cosmetics","t":"Trade Show","d":"Europe's leading professional beauty fair (Mar 20-22). Strong attendance from salon owners and beauty professionals across Europe. Gateway for brands expanding into EU market.","w":"https://www.beauty-duesseldorf.com/","p":"Medium","a":"TBD","days":3,"cost":null},{"m":"June","l":"Munich","n":"Cosmetic Business 2026","i":"Personal Care / Cosmetics","t":"Trade Show","d":"B2B trade fair focused on cosmetic manufacturing, ingredients, packaging, and private label (Jun 10-11). Smaller but highly targeted — ideal for brands looking for European manufacturing/distribution partnerships.","w":"https://www.cosmetic-business.com/","p":"Low","a":"TBD","days":2,"cost":null},{"m":"October","l":"Cannes","n":"TFWA World Exhibition 2026","i":"Personal Care / Travel Retail","t":"Trade Show","d":"The global hub for duty-free and travel retail (Sep 27 - Oct 1). Major beauty/fragrance brands meet global travel retail buyers. Key for brands wanting to enter international duty-free distribution channels across US, LatAm, and Europe.","w":"https://www.tfwa.com/","p":"High","a":"TBD","days":3,"cost":null},{"m":"June","l":"São Paulo","n":"FCE Cosmetique 2026","i":"Personal Care / Cosmetics","t":"Trade Show","d":"Brazil's main cosmetics and personal care trade show (Jun 1-3). Exhibition for ingredients, packaging, equipment, and finished products. Gateway to the Brazilian market — the 4th largest cosmetics market globally.","w":"https://www.fcecosmetique.com.br/","p":"High","a":"TBD","days":3,"cost":null},{"m":"September","l":"São Paulo","n":"in-cosmetics Latin America 2026","i":"Personal Care / Ingredients","t":"Trade Show","d":"The leading cosmetic ingredients event for Latin America (Sep 23-24). Connects international ingredient suppliers with LatAm beauty brands. Critical for companies wanting to formulate and manufacture for the LatAm market.","w":"https://www.in-cosmetics.com/latin-america/","p":"Medium","a":"TBD","days":2,"cost":null},{"m":"July","l":"Lima","n":"Cosmo Beauty Professional Peru 2026","i":"Personal Care / Cosmetics","t":"Trade Show","d":"Serves beauty professionals across Peru and neighboring Andean markets (Jul 5-7). Highlights professional cosmetics, haircare, and salon equipment. Entry point for brands targeting the growing Andean market.","w":"https://www.cosmobeauty.pe/","p":"Low","a":"TBD","days":2,"cost":null}];
+
+function vert(i){
+  i=(i||'').toLowerCase();
+  if(/fintech|financial|crypto|insurance/.test(i))return'fintech';
+  if(/(streaming|television|broadcasting|media)/.test(i)&&!/personal/.test(i))return'streaming';
+  if(/personal care|beauty|cosmetics/.test(i))return'beauty';
+  return'other';
 }
 
-function loadData() {
-  return new Promise((resolve, reject) => {
-    Papa.parse(CSV_URL, {
-      download: true,
-      header: false,
-      skipEmptyLines: true,
-      complete: function(results) {
-        if (!results.data || results.data.length < 2) {
-          reject(new Error('No data rows found'));
-          return;
-        }
-        const rows = results.data;
-        const events = [];
-        // Skip header row (index 0)
-        for (let r = 1; r < rows.length; r++) {
-          const row = rows[r];
-          const name = (row[2] || '').trim();
-          if (!name) continue;
-          events.push({
-            m: (row[0] || '').trim(),
-            l: (row[1] || '').trim(),
-            n: name,
-            i: (row[3] || '').trim(),
-            t: (row[4] || '').trim(),
-            d: (row[5] || '').trim(),
-            w: (row[6] || '').trim(),
-            p: (row[7] || '').trim(),
-            a: (row[8] || '').trim(),
-            days: parseFloat(row[9]) || null,
-            _v: vert((row[3] || '').trim())
-          });
-        }
-        events.sort((a, b) => {
-          const ai = MO.indexOf(a.m), bi = MO.indexOf(b.m);
-          if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-          const po = { High: 0, Medium: 1, Low: 2 };
-          return (po[a.p] ?? 3) - (po[b.p] ?? 3);
-        });
-        resolve(events);
-      },
-      error: function(err) {
-        reject(new Error(err.message || 'Papa Parse failed to fetch CSV'));
-      }
+function parseRows(rows){
+  const events=[];
+  for(let r=0;r<rows.length;r++){
+    const row=rows[r];
+    const name=(row[2]||'').trim();
+    if(!name)continue;
+    events.push({
+      m:(row[0]||'').trim(), l:(row[1]||'').trim(), n:name,
+      i:(row[3]||'').trim(), t:(row[4]||'').trim(), d:(row[5]||'').trim(),
+      w:(row[6]||'').trim(), p:(row[7]||'').trim(), a:(row[8]||'').trim(),
+      days:parseFloat(row[9])||null, _v:vert((row[3]||'').trim())
     });
-  });
+  }
+  return sortEvents(events);
 }
 
-let E = [], fv = 'all', fp = 'all';
+function parseFallback(data){
+  return sortEvents(data.map(e=>({...e, _v:vert(e.i)})));
+}
 
-function renderStats() {
-  const st = document.getElementById('stats');
-  const hc = E.filter(e => e.p === 'High').length;
-  const mc = E.filter(e => e.p === 'Medium').length;
-  const fc = E.filter(e => e._v === 'fintech').length;
-  const sc = E.filter(e => e._v === 'streaming').length;
-  const bc = E.filter(e => e._v === 'beauty').length;
-  st.innerHTML = `
+function sortEvents(events){
+  events.sort((a,b)=>{
+    const ai=MO.indexOf(a.m),bi=MO.indexOf(b.m);
+    if(ai!==bi)return(ai===-1?99:ai)-(bi===-1?99:bi);
+    const po={High:0,Medium:1,Low:2};
+    return(po[a.p]??3)-(po[b.p]??3);
+  });
+  return events;
+}
+
+async function loadLive(){
+  // Method 1: Papa Parse download
+  try {
+    const result = await new Promise((resolve, reject) => {
+      Papa.parse(CSV_URL, {
+        download: true, header: false, skipEmptyLines: true,
+        complete: r => resolve(r),
+        error: e => reject(e)
+      });
+    });
+    if(result.data && result.data.length>1){
+      return {events: parseRows(result.data.slice(1)), source:'live-papa'};
+    }
+  } catch(e){ console.log('Papa Parse failed:', e); }
+
+  // Method 2: fetch API directly
+  try {
+    const res = await fetch(CSV_URL);
+    if(res.ok){
+      const text = await res.text();
+      const result = Papa.parse(text, {header:false, skipEmptyLines:true});
+      if(result.data && result.data.length>1){
+        return {events: parseRows(result.data.slice(1)), source:'live-fetch'};
+      }
+    }
+  } catch(e){ console.log('Fetch failed:', e); }
+
+  // Method 3: fetch with no-cors (will fail but try)
+  try {
+    const res = await fetch(CSV_URL, {mode:'cors', credentials:'omit'});
+    if(res.ok){
+      const text = await res.text();
+      const result = Papa.parse(text, {header:false, skipEmptyLines:true});
+      if(result.data && result.data.length>1){
+        return {events: parseRows(result.data.slice(1)), source:'live-cors'};
+      }
+    }
+  } catch(e){ console.log('CORS fetch failed:', e); }
+
+  return null;
+}
+
+let E=[], fv='all', fp='all';
+
+function renderStats(){
+  const st=document.getElementById('stats');
+  const hc=E.filter(e=>e.p==='High').length;
+  const mc=E.filter(e=>e.p==='Medium').length;
+  const fc=E.filter(e=>e._v==='fintech').length;
+  const sc=E.filter(e=>e._v==='streaming').length;
+  const bc=E.filter(e=>e._v==='beauty').length;
+  st.innerHTML=`
     <div class="sc"><div class="n">${E.length}</div><div class="lb">Total Events</div></div>
     <div class="sc"><div class="n">${hc}</div><div class="lb">High Priority</div></div>
     <div class="sc"><div class="n">${mc}</div><div class="lb">Medium Priority</div></div>
@@ -171,79 +198,68 @@ function renderStats() {
     <div class="sc"><div class="n">${bc}</div><div class="lb">Beauty</div></div>`;
 }
 
-function render() {
-  const f = E.filter(e => {
-    if (fv !== 'all' && e._v !== fv) return false;
-    if (fp !== 'all' && e.p !== fp) return false;
+function render(){
+  const f=E.filter(e=>{
+    if(fv!=='all'&&e._v!==fv)return false;
+    if(fp!=='all'&&e.p!==fp)return false;
     return true;
   });
-  const g = document.getElementById('grid');
-  const cn = document.getElementById('count');
-  cn.textContent = f.length + ' events';
-  g.innerHTML = '';
-  let curMonth = '';
-  f.forEach(e => {
-    if (e.m !== curMonth) {
-      curMonth = e.m;
-      const s = document.createElement('div');
-      s.className = 'st';
-      s.textContent = curMonth || 'TBD';
-      g.appendChild(s);
-    }
-    const c = document.createElement('div');
-    const pc = e.p === 'High' ? 'h' : e.p === 'Medium' ? 'm' : 'l';
-    c.className = 'ec ' + pc;
-    const bc2 = e.p === 'High' ? 'bdg-h' : e.p === 'Medium' ? 'bdg-m' : 'bdg-l';
-    const vc = 'vt-' + e._v;
-    const at = e.a === 'Yes' ? ' ✅' : '';
-    c.innerHTML = `
-      <div>
-        <div class="en">${e.n}${at}</div>
-        <div class="em">
-          <span>📅 ${e.m || 'TBD'}</span>
-          <span>📍 ${e.l}</span>
-          ${e.days ? '<span>⏱ ' + e.days + 'd</span>' : ''}
-          <span>🏷 ${e.t || ''}</span>
-        </div>
-        <div class="ed">${e.d}</div>
+  const g=document.getElementById('grid');
+  document.getElementById('count').textContent=f.length+' events';
+  g.innerHTML='';
+  let cm='';
+  f.forEach(e=>{
+    if(e.m!==cm){cm=e.m;const s=document.createElement('div');s.className='st';s.textContent=cm||'TBD';g.appendChild(s)}
+    const c=document.createElement('div');
+    const pc=e.p==='High'?'h':e.p==='Medium'?'m':'l';
+    c.className='ec '+pc;
+    const bc2=e.p==='High'?'bdg-h':e.p==='Medium'?'bdg-m':'bdg-l';
+    const vc='vt-'+e._v;
+    const at=e.a==='Yes'?' ✅':'';
+    c.innerHTML=`<div>
+      <div class="en">${e.n}${at}</div>
+      <div class="em">
+        <span>📅 ${e.m||'TBD'}</span><span>📍 ${e.l}</span>
+        ${e.days?'<span>⏱ '+e.days+'d</span>':''}<span>🏷 ${e.t||''}</span>
       </div>
-      <div class="sd">
-        <span class="bdg ${bc2}">${e.p || 'TBD'}</span>
-        <span class="vt ${vc}">${e.i || ''}</span>
-      </div>`;
-    c.onclick = () => c.classList.toggle('open');
+      <div class="ed">${e.d}</div>
+    </div>
+    <div class="sd">
+      <span class="bdg ${bc2}">${e.p||'TBD'}</span>
+      <span class="vt ${vc}">${e.i||''}</span>
+    </div>`;
+    c.onclick=()=>c.classList.toggle('open');
     g.appendChild(c);
   });
 }
 
-// Init
-loadData().then(events => {
-  E = events;
-  renderStats();
-  document.getElementById('controls').style.display = 'block';
-  render();
+function wireFilters(){
+  document.getElementById('controls').style.display='block';
+  document.getElementById('vertFilters').onclick=e=>{
+    if(!e.target.classList.contains('fb'))return;
+    document.querySelectorAll('#vertFilters .fb').forEach(b=>b.classList.remove('act'));
+    e.target.classList.add('act'); fv=e.target.dataset.v; render();
+  };
+  document.getElementById('prioFilters').onclick=e=>{
+    if(!e.target.classList.contains('fb'))return;
+    document.querySelectorAll('#prioFilters .fb').forEach(b=>b.classList.remove('act'));
+    e.target.classList.add('act'); fp=e.target.dataset.p; render();
+  };
+}
 
-  document.getElementById('vertFilters').onclick = e => {
-    if (!e.target.classList.contains('fb')) return;
-    document.querySelectorAll('#vertFilters .fb').forEach(b => b.classList.remove('act'));
-    e.target.classList.add('act');
-    fv = e.target.dataset.v;
-    render();
-  };
-  document.getElementById('prioFilters').onclick = e => {
-    if (!e.target.classList.contains('fb')) return;
-    document.querySelectorAll('#prioFilters .fb').forEach(b => b.classList.remove('act'));
-    e.target.classList.add('act');
-    fp = e.target.dataset.p;
-    render();
-  };
-}).catch(err => {
-  document.getElementById('stats').innerHTML = `<div class="error-box">
-    <p><strong>Could not load live data</strong></p>
-    <p style="margin-top:8px;font-size:13px">Error: ${err.message}</p>
-    <p style="margin-top:12px;font-size:12px;color:var(--dim)">Make sure the Google Sheet is published to web:<br>File → Share → Publish to Web → select the correct tab → CSV</p>
-  </div>`;
-});
+// Init — try live, fall back to embedded snapshot
+(async function(){
+  const note=document.getElementById('srcNote');
+  const live=await loadLive();
+  if(live && live.events.length>0){
+    E=live.events;
+    note.innerHTML=`<span class="dot dot-live"></span> Live from Google Sheets (${live.source}) · ${E.length} events · ${new Date().toLocaleString()}`;
+  } else {
+    E=parseFallback(FALLBACK);
+    note.innerHTML=`<span class="dot dot-cache"></span> Using embedded snapshot · ${E.length} events · To enable live sync, host this file on a web server (not file://) and ensure the sheet is <a href="https://support.google.com/docs/answer/183965" target="_blank" style="color:var(--gold)">published to web</a>`;
+  }
+  renderStats(); render(); wireFilters();
+})();
 </script>
 </body>
 </html>
