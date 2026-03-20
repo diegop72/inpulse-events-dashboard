@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INPULSE — Live Event Intelligence 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg: #0a0e17;
+            --surface: #111827;
+            --surface-2: #1a2235;
+            --accent: #00e59b;
+            --accent-dim: rgba(0,229,155,0.12);
+            --warn: #ff6b4a;
+            --gold: #fbbf24;
+            --blue: #38bdf8;
+            --text: #e2e8f0;
+            --text-dim: #64748b;
+            --border: rgba(255,255,255,0.06);
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .ambient-glow {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;
+            background: radial-gradient(circle at 15% 20%, rgba(0,229,155,0.05), transparent 40%),
+                        radial-gradient(circle at 85% 70%, rgba(56,189,248,0.05), transparent 40%);
+        }
+
+        .glass-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+
+        .tier-must { border-left: 4px solid var(--accent); }
+        .tier-high { border-left: 4px solid var(--gold); }
+        .tier-consider { border-left: 4px solid var(--blue); }
+        .tier-skip { border-left: 4px solid var(--text-dim); opacity: 0.6; }
+
+        .mono { font-family: 'Space Mono', monospace; }
+
+        /* Timeline Styles */
+        .timeline-container::-webkit-scrollbar { height: 4px; }
+        .timeline-container::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 10px; }
+
+        .filter-btn.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-12">
+    <div class="ambient-glow"></div>
+
+    <div class="max-w-6xl mx-auto relative z-10">
+        <header class="mb-12 border-b border-white/5 pb-10">
+            <div class="mono text-[10px] tracking-[4px] text-emerald-400 mb-4 uppercase flex items-center gap-3">
+                <span class="w-8 h-[1px] bg-emerald-400"></span> INPULSE Agency — Live Intelligence
+            </div>
+            <h1 class="text-4xl md:text-5xl font-bold mb-4">Event Roadmap <span class="text-emerald-400">2026</span></h1>
+            <p class="text-slate-400 max-w-2xl leading-relaxed">Análisis dinámico sincronizado con Google Sheets para la generación de leads B2C en Fintech, Streaming y Personal Care.</p>
+        </header>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12" id="statsRow">
+            </div>
+
+        <div class="flex flex-wrap gap-2 mb-8" id="filterContainer">
+            <button onclick="filterByIndustry('Todos')" class="filter-btn active px-4 py-1.5 rounded-full border border-white/10 text-xs font-bold mono">TODOS</button>
+        </div>
+
+        <div class="mono text-[11px] text-slate-500 tracking-widest uppercase mb-4">Calendario Visual</div>
+        <div class="timeline-container overflow-x-auto mb-12 pb-4">
+            <div class="flex gap-0 min-w-max" id="timelineRow">
+                </div>
+        </div>
+
+        <div class="mono text-[11px] text-slate-500 tracking-widest uppercase mb-6 flex items-center gap-4">
+            Análisis Detallado <span class="h-[1px] bg-white/5 flex-grow"></span>
+        </div>
+        <div class="grid gap-4 mb-16" id="eventGrid">
+            <div class="text-center py-20 text-slate-500 mono animate-pulse">Sincronizando con base de datos...</div>
+        </div>
+
+        <div class="mono text-[11px] text-slate-500 tracking-widest uppercase mb-6">Presupuesto Estimado (Priority)</div>
+        <div class="glass-card rounded-xl overflow-hidden">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-white/5 mono text-[10px] text-slate-400">
+                    <tr>
+                        <th class="p-4">EVENTO</th>
+                        <th class="p-4">MES</th>
+                        <th class="p-4">UBICACIÓN</th>
+                        <th class="p-4 text-right">COSTO EST.</th>
+                    </tr>
+                </thead>
+                <tbody id="budgetTable" class="divide-y divide-white/5">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTAyEpkb6xhFiVRnDIUi6Rj06gqoYhN3Mkib-gOgNfjR1OHj6TG0bM86DWmhMOM7wikoYVXaIXFXwGv/pub?output=csv";
+        const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        
+        let allEvents = [];
+
+        async function init() {
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    allEvents = results.data.filter(e => e.Evento); // Limpiar filas vacías
+                    renderDashboard(allEvents);
+                    renderFilters(allEvents);
+                }
+            });
+        }
+
+        function renderDashboard(data) {
+            renderStats(data);
+            renderTimeline(data);
+            renderCards(data);
+            renderBudget(data);
+        }
+
+        function renderStats(data) {
+            const statsRow = document.getElementById('statsRow');
+            const total = data.length;
+            const fintech = data.filter(e => e.Industria?.toLowerCase().includes('fintech')).length;
+            const must = data.filter(e => e.Prioridad?.toLowerCase().includes('must')).length;
+            const countries = [...new Set(data.map(e => e.Pais))].length;
+
+            const stats = [
+                { val: total, label: 'Eventos' },
+                { val: fintech, label: 'Fintech' },
+                { val: must, label: 'Must-Attend' },
+                { val: countries, label: 'Países' }
+            ];
+
+            statsRow.innerHTML = stats.map(s => `
+                <div class="glass-card p-6 rounded-xl text-center">
+                    <div class="text-2xl font-bold mono text-emerald-400">${s.val}</div>
+                    <div class="text-[10px] text-slate-500 uppercase tracking-tighter mt-1">${s.label}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderTimeline(data) {
+            const row = document.getElementById('timelineRow');
+            row.innerHTML = months.map(m => {
+                const monthEvents = data.filter(e => e.Mes === m);
+                return `
+                    <div class="min-w-[140px] p-4 border-l border-white/5">
+                        <div class="mono text-[10px] text-slate-500 mb-4">${m.substring(0,3).toUpperCase()}</div>
+                        ${monthEvents.map(e => `
+                            <div class="w-2 h-2 rounded-full mb-1 ${getTierClass(e.Prioridad, 'bg')}" title="${e.Evento}"></div>
+                            <div class="text-[9px] text-slate-400 truncate w-24 mb-3">${e.Evento}</div>
+                        `).join('') || '<div class="text-slate-800 mono text-[10px]">—</div>'}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderCards(data) {
+            const grid = document.getElementById('eventGrid');
+            grid.innerHTML = data.map(e => `
+                <div class="glass-card p-6 rounded-xl flex flex-col md:flex-row justify-between gap-6 ${getTierClass(e.Prioridad, 'tier')}">
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-3 mb-2">
+                            <h3 class="text-lg font-bold text-white">${e.Evento}</h3>
+                            <span class="text-[10px] mono px-2 py-0.5 rounded bg-white/5 text-slate-400">${e.Industria}</span>
+                        </div>
+                        <div class="flex gap-4 text-xs text-slate-500 mb-4 mono">
+                            <span>📅 ${e.Mes}</span>
+                            <span>📍 ${e.Pais}</span>
+                        </div>
+                        <p class="text-sm text-slate-400 leading-relaxed">${e.Notas || ''}</p>
+                    </div>
+                    <div class="flex flex-col items-end justify-between min-w-[120px]">
+                        <span class="text-[10px] font-bold mono uppercase px-3 py-1 rounded-full ${getTierClass(e.Prioridad, 'badge')}">
+                            ${e.Prioridad}
+                        </span>
+                        <div class="mt-4 text-right">
+                            <div class="mono text-sm font-bold text-white mb-2">${e.Costo ? '$' + parseInt(e.Costo).toLocaleString() : 'TBD'}</div>
+                            <a href="${e.Link}" target="_blank" class="text-emerald-400 text-xs font-bold hover:underline">WEB INFO →</a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderBudget(data) {
+            const table = document.getElementById('budgetTable');
+            const highPriority = data.filter(e => e.Prioridad?.toLowerCase().includes('must') || e.Prioridad?.toLowerCase().includes('high'));
+            let total = 0;
+
+            table.innerHTML = highPriority.map(e => {
+                const c = parseInt(e.Costo) || 0;
+                total += c;
+                return `
+                    <tr>
+                        <td class="p-4 font-bold text-slate-200">${e.Evento}</td>
+                        <td class="p-4 text-slate-400 mono text-xs">${e.Mes}</td>
+                        <td class="p-4 text-slate-400">${e.Pais}</td>
+                        <td class="p-4 text-right mono text-emerald-400 font-bold">$${c.toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('') + `
+                <tr class="bg-emerald-400/5">
+                    <td colspan="3" class="p-4 mono font-bold text-emerald-400">TOTAL ESTIMADO (MUST + HIGH)</td>
+                    <td class="p-4 text-right mono font-bold text-emerald-400 text-lg">$${total.toLocaleString()}</td>
+                </tr>
+            `;
+        }
+
+        function renderFilters(data) {
+            const container = document.getElementById('filterContainer');
+            const industries = [...new Set(data.map(e => e.Industria).filter(i => i))];
+            
+            industries.forEach(ind => {
+                const btn = document.createElement('button');
+                btn.className = "filter-btn px-4 py-1.5 rounded-full border border-white/10 text-xs font-bold mono text-slate-500 hover:text-white";
+                btn.innerText = ind.toUpperCase();
+                btn.onclick = (e) => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    filterByIndustry(ind);
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function filterByIndustry(ind) {
+            const filtered = ind === 'Todos' ? allEvents : allEvents.filter(e => e.Industria === ind);
+            renderCards(filtered);
+        }
+
+        function getTierClass(prio, type) {
+            const p = prio?.toLowerCase() || '';
+            if (p.includes('must')) return type === 'tier' ? 'tier-must' : (type === 'bg' ? 'bg-emerald-400' : 'bg-emerald-400/10 text-emerald-400');
+            if (p.includes('high')) return type === 'tier' ? 'tier-high' : (type === 'bg' ? 'bg-amber-400' : 'bg-amber-400/10 text-amber-400');
+            if (p.includes('consider')) return type === 'tier' ? 'tier-consider' : (type === 'bg' ? 'bg-sky-400' : 'bg-sky-400/10 text-sky-400');
+            return type === 'tier' ? 'tier-skip' : (type === 'bg' ? 'bg-slate-600' : 'bg-white/5 text-slate-500');
+        }
+
+        init();
+    </script>
+</body>
+</html>
